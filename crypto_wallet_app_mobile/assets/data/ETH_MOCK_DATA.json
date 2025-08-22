@@ -1,0 +1,16 @@
+[
+  {
+    "symbol": "ETH",
+    "cryptoName": "Ethereum (Sepolia)",
+    "imgPath": "assets/avatar_Imgs/Ethereum.png",
+    "coinType": 60,
+    "derivationPath": "m/44'/60'/0'",
+    "isTestnet": true,
+    "network": "sepolia",
+    "cryptoPrice": 2417.1,
+    "isErc20": false,
+    "decimals": 18,
+    "chainId": 11155111,
+    "apiSupported": true
+  }
+]
