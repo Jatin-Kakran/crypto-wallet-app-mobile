@@ -13,6 +13,47 @@ import 'package:crypto_wallet_app_mobile/state/wallet_provider.dart';
 import 'package:crypto_wallet_app_mobile/models/hd_wallet_model.dart';
 import 'package:crypto_wallet_app_mobile/delete_splash_page.dart';
 
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+
+class WalletCryptoAssetModel {
+  final String symbol;
+  final String publicAddress;
+  final String privateKey;
+  final double balance;
+  final String publicKey;
+
+  WalletCryptoAssetModel({
+    required this.symbol,
+    required this.publicAddress,
+    required this.privateKey,
+    required this.balance,
+    required this.publicKey,
+  });
+
+  factory WalletCryptoAssetModel.fromJson(Map<String, dynamic> json) {
+    return WalletCryptoAssetModel(
+      symbol: json['symbol'] as String,
+      publicAddress: json['publicAddress'] as String,
+      privateKey: json['privateKey'] as String,
+      balance: (json['balance'] as num).toDouble(),
+      publicKey: json['publicKey'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'symbol': symbol,
+      'publicAddress': publicAddress,
+      'privateKey': privateKey,
+      'balance': balance,
+      'publicKey': publicKey,
+    };
+  }
+}
+
 class WalletInfoPage extends StatefulWidget {
   final HDWalletModel wallet;
 
@@ -24,10 +65,45 @@ class WalletInfoPage extends StatefulWidget {
 
 class _WalletInfoPageState extends State<WalletInfoPage> {
   List<String> _passwordInputs = [];
+  List<WalletCryptoAssetModel> _cryptoAssets = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCryptoAssets();
+  }
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  void _loadCryptoAssets() {
+    // Mock data - replace with actual data from your provider
+    final displayWallet = widget.wallet;
+
+    setState(() {
+      _cryptoAssets = [
+        WalletCryptoAssetModel(
+          symbol: 'BTC',
+          publicAddress:
+              displayWallet.dataKey.masterPublicKeyXpub ??
+              'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+          privateKey: displayWallet.dataKey.masterPrivateKeyXprv ?? 'L4gB1...',
+          balance: 0.125,
+          publicKey: displayWallet.dataKey.masterPublicKeyXpub ?? '02a1b2...',
+        ),
+        WalletCryptoAssetModel(
+          symbol: 'ETH',
+          publicAddress: '0x742d35Cc6634C0532925a3b8Doe2345f7e4a0f3d',
+          privateKey:
+              '0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318',
+          balance: 1.75,
+          publicKey:
+              '0x03a1b2c3d4e5f678901234567890123456789012345678901234567890123456789',
+        ),
+      ];
+    });
   }
 
   @override
@@ -131,10 +207,7 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
         "onTap": () => showAlertBoxWithTimer(
           context: context,
           message:
-              "This will permanently delete all wallets, private keys,"
-              " and associated balances stored on this device."
-              " This action is irreversible."
-              " Make sure you have backed up all necessary information before continuing.",
+              "This will permanently delete all wallets, private keys, and associated balances stored on this device. This action is irreversible. Make sure you have backed up all necessary information before continuing.",
           onYes: () {
             Provider.of<WalletProvider>(
               context,
@@ -154,10 +227,9 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
       },
       {
         "type": "coins",
-        "title": "Coins",
-        "trailing": "\$0",
-        "onTap": () =>
-            debugPrint("Coins tapped for ${displayWallet.walletName}"),
+        "title": "Crypto Assets",
+        "trailing": "\$${_calculateTotalBalance()}",
+        "onTap": () => _showCryptoAssets(context),
       },
     ];
 
@@ -184,140 +256,12 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () async {
-                    // IMPORTANT: Make onPressed async
-                    debugPrint(
-                      "Remove Wallet button tapped for ${displayWallet.walletName}",
-                    );
-
-                    // 1. Show Password Bottom Sheet
-                    bool? passwordConfirmed = await showModalBottomSheet<bool>(
-                      backgroundColor: AppColors.backgroundColor,
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (sheetContext) => PasswordBottomSheet(
-                        onSuccess: () {
-                          Navigator.of(sheetContext).pop(true);
-                        },
-                      ),
-                    );
-
-                    if (passwordConfirmed != true) {
-                      debugPrint(
-                        "Password not confirmed or sheet dismissed. Aborting deletion.",
-                      );
-                      return;
-                    }
-
-                    if (!context.mounted) {
-                      debugPrint(
-                        "Context not mounted after password confirmation.",
-                      );
-                      return;
-                    }
-
-                    // 2. Show Alert Box With Timer
-                    bool? confirmedToDelete = await showDialog<bool>(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (alertContext) => AlertBoxWithTimer(
-                        message: warningBeforeRemovingWallet,
-                        countdownSeconds: 5,
-                        onYes: () {
-                          Navigator.of(alertContext).pop(true);
-                        },
-                        onNo: () {
-                          // Make sure your AlertBoxWithTimer accepts onNo
-                          Navigator.of(alertContext).pop(false);
-                        },
-                      ),
-                    );
-
-                    if (confirmedToDelete != true) {
-                      debugPrint(
-                        "Wallet deletion not confirmed by user. Aborting.",
-                      );
-                      return;
-                    }
-
-                    if (!context.mounted) {
-                      debugPrint(
-                        "Context not mounted after deletion confirmation.",
-                      );
-                      return;
-                    }
-
-                    // --- FIX START ---
-                    // Change `BuildContext loadingDialogContext;` to `BuildContext? loadingDialogContext;`
-                    // and initialize it to null.
-                    BuildContext?
-                    loadingDialogContext; // Now nullable and initialized to null
-
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (ctx) {
-                        loadingDialogContext = ctx; // Assignment happens here
-                        return const Center(child: CircularProgressIndicator());
-                      },
-                    );
-                    // --- FIX END ---
-
-                    bool deletionSuccess = false;
-                    try {
-                      deletionSuccess = await walletProvider
-                          .deleteSpecificWallet(displayWallet.walletName);
-                    } catch (e) {
-                      debugPrint("Error during wallet deletion: $e");
-                    } finally {
-                      // Check if loadingDialogContext is not null AND mounted before popping
-                      if (loadingDialogContext != null &&
-                          loadingDialogContext!.mounted) {
-                        Navigator.of(
-                          loadingDialogContext!,
-                        ).pop(); // Use null-aware access
-                      }
-                    }
-
-                    if (!context.mounted) {
-                      debugPrint(
-                        "Context not mounted after deletion operation.",
-                      );
-                      return;
-                    }
-
-                    if (deletionSuccess) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Wallet "${displayWallet.walletName}" deleted successfully!',
-                          ),
-                          backgroundColor: AppColors.greenColor,
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Failed to delete wallet "${displayWallet.walletName}". Please try again.',
-                          ),
-                          backgroundColor: AppColors.redColor,
-                        ),
-                      );
-                    }
-
-                    if (walletProvider.allWallets.isEmpty) {
-                      NavigationHelper.pushAndRemoveUntil(
-                        context,
-                        const WalletDeletionSplashPage(),
-                      );
-                    } else {
-                      NavigationHelper.pushAndRemoveUntil(
-                        context,
-                        const HomeScreen(),
-                      );
-                    }
-                  },
+                  onPressed: () => _handleWalletRemoval(
+                    context,
+                    displayWallet,
+                    walletProvider,
+                    warningBeforeRemovingWallet,
+                  ),
                   child: const Text(
                     "Remove Wallet",
                     style: TextStyle(fontSize: 16, color: Colors.white),
@@ -327,6 +271,116 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  String _calculateTotalBalance() {
+    double total = _cryptoAssets.fold(0.0, (sum, asset) => sum + asset.balance);
+    return total.toStringAsFixed(2);
+  }
+
+  Future<void> _handleWalletRemoval(
+    BuildContext context,
+    HDWalletModel displayWallet,
+    WalletProvider walletProvider,
+    String warningMessage,
+  ) async {
+    debugPrint("Remove Wallet button tapped for ${displayWallet.walletName}");
+
+    bool? passwordConfirmed = await showModalBottomSheet<bool>(
+      backgroundColor: AppColors.backgroundColor,
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => PasswordBottomSheet(
+        onSuccess: () {
+          Navigator.of(sheetContext).pop(true);
+        },
+      ),
+    );
+
+    if (passwordConfirmed != true) {
+      debugPrint(
+        "Password not confirmed or sheet dismissed. Aborting deletion.",
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    bool? confirmedToDelete = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (alertContext) => AlertBoxWithTimer(
+        message: warningMessage,
+        countdownSeconds: 5,
+        onYes: () => Navigator.of(alertContext).pop(true),
+        onNo: () => Navigator.of(alertContext).pop(false),
+      ),
+    );
+
+    if (confirmedToDelete != true) {
+      debugPrint("Wallet deletion not confirmed by user. Aborting.");
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    BuildContext? loadingDialogContext;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        loadingDialogContext = ctx;
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    bool deletionSuccess = false;
+    try {
+      deletionSuccess = await walletProvider.deleteSpecificWallet(
+        displayWallet.walletName,
+      );
+    } catch (e) {
+      debugPrint("Error during wallet deletion: $e");
+    } finally {
+      if (loadingDialogContext != null && loadingDialogContext!.mounted) {
+        Navigator.of(loadingDialogContext!).pop();
+      }
+    }
+
+    if (!context.mounted) return;
+
+    _showDeletionResultSnackbar(
+      context,
+      displayWallet.walletName,
+      deletionSuccess,
+    );
+
+    if (walletProvider.allWallets.isEmpty) {
+      NavigationHelper.pushAndRemoveUntil(
+        context,
+        const WalletDeletionSplashPage(),
+      );
+    } else {
+      NavigationHelper.pushAndRemoveUntil(context, const HomeScreen());
+    }
+  }
+
+  void _showDeletionResultSnackbar(
+    BuildContext context,
+    String walletName,
+    bool success,
+  ) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Wallet "$walletName" deleted successfully!'
+              : 'Failed to delete wallet "$walletName". Please try again.',
+        ),
+        backgroundColor: success ? AppColors.greenColor : AppColors.redColor,
       ),
     );
   }
@@ -440,9 +494,6 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
     );
   }
 
-  // --- Key Export Logic ---
-
-  // --- CRUCIAL FIX: Changed return type from Future<void> to Future<bool?> ---
   Future<bool?> _showPasswordConfirmationAndDisplayKeys(
     BuildContext context,
     String mnemonic, {
@@ -546,14 +597,12 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
 
       try {
         if (isPrivateKey) {
-          // Display master private key (XPRV)
           keysToDisplay.add({
             'name': 'Master Private Key (XPRV)',
             'value': displayWallet.dataKey.masterPrivateKeyXprv,
             'chain': 'Hierarchical Deterministic Wallet',
           });
         } else {
-          // Display master public key (XPUB)
           keysToDisplay.add({
             'name': 'Master Public Key (XPUB)',
             'value': displayWallet.dataKey.masterPublicKeyXpub,
@@ -644,9 +693,7 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
                 'Cancel',
                 style: TextStyle(color: AppColors.defaultThemePurple),
               ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop(false);
-              },
+              onPressed: () => Navigator.of(dialogContext).pop(false),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -654,26 +701,20 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
                 foregroundColor: Colors.white,
               ),
               child: const Text('I Understand & Agree'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop(true);
-              },
+              onPressed: () => Navigator.of(dialogContext).pop(true),
             ),
           ],
         );
       },
     );
 
-    if (userAgreed == true) {
-      if (mounted) {
-        // Here, we don't care about the return value of _showPasswordConfirmationAndDisplayKeys,
-        // so awaiting a Future<bool?> (which we changed it to) is fine.
-        await _showPasswordConfirmationAndDisplayKeys(
-          context,
-          mnemonic,
-          isPrivateKey: true,
-          walletProvider: walletProvider,
-        );
-      }
+    if (userAgreed == true && mounted) {
+      await _showPasswordConfirmationAndDisplayKeys(
+        context,
+        mnemonic,
+        isPrivateKey: true,
+        walletProvider: walletProvider,
+      );
     }
   }
 
@@ -706,7 +747,7 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    isPrivateKey ? 'Your Private Keys' : 'Your Public Keys',
+                    isPrivateKey ? 'Your Private Key' : 'Your Public Key',
                     style: TextStyle(
                       color: AppColors.titleColor,
                       fontSize: 18,
@@ -799,6 +840,293 @@ class _WalletInfoPageState extends State<WalletInfoPage> {
         );
       },
     );
+  }
+
+  Future<void> _showCryptoAssets(BuildContext context) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.backgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(25.0),
+              ),
+            ),
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Crypto Assets',
+                    style: TextStyle(
+                      color: AppColors.titleColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (_cryptoAssets.isEmpty)
+                  Center(
+                    child: Text(
+                      'No crypto assets found',
+                      style: TextStyle(
+                        color: AppColors.subtitleColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
+                else
+                  ..._cryptoAssets.map((asset) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 15.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.borderColor),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  asset.symbol,
+                                  style: TextStyle(
+                                    color: AppColors.titleColor,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Balance: ${asset.balance}',
+                                  style: TextStyle(
+                                    color: AppColors.textColor,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            _buildKeyValueRow(
+                              'Public Address',
+                              asset.publicAddress,
+                            ),
+                            const SizedBox(height: 4),
+                            _buildKeyValueRow('Public Key', asset.publicKey),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: () =>
+                                  _showAssetPrivateKey(context, asset),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.redColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text('Show Private Key'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.defaultThemePurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildKeyValueRow(String key, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$key: ',
+          style: TextStyle(
+            color: AppColors.subtitleColor,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(color: AppColors.textColor, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.copy, color: AppColors.iconColor, size: 14),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: value));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('$key copied to clipboard!')),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showAssetPrivateKey(
+    BuildContext context,
+    WalletCryptoAssetModel asset,
+  ) async {
+    bool? userAgreed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.cardColor,
+          title: Text(
+            'WARNING: ${asset.symbol} Private Key',
+            style: TextStyle(
+              color: AppColors.redAccentColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text(
+                  'This is the private key for ${asset.symbol}. Anyone with this key can access your ${asset.symbol} funds.',
+                  style: TextStyle(color: AppColors.textColor, fontSize: 14),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Keep this secure and never share it!',
+                  style: TextStyle(
+                    color: AppColors.titleColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: AppColors.defaultThemePurple),
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.redColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('I Understand'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (userAgreed == true && mounted) {
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            backgroundColor: AppColors.cardColor,
+            title: Text(
+              '${asset.symbol} Private Key',
+              style: TextStyle(
+                color: AppColors.titleColor,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundColor,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.borderColor),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      asset.privateKey,
+                      style: TextStyle(
+                        color: AppColors.textColor,
+                        fontSize: 12,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.copy,
+                      color: AppColors.iconColor,
+                      size: 16,
+                    ),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: asset.privateKey));
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        SnackBar(
+                          content: Text('${asset.symbol} Private Key copied!'),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: Text(
+                  'Close',
+                  style: TextStyle(color: AppColors.defaultThemePurple),
+                ),
+                onPressed: () => Navigator.of(dialogContext).pop(),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   Widget _buildInputDots(List<String> inputs) {

@@ -67,17 +67,17 @@ class HomeScreenState extends State<HomeScreen> {
         //     MaterialPageRoute(builder: (context) => NotificationsPage()),
         //   ),
         // ),
-        IconButton(
-          icon: Icon(
-            Icons.settings,
-            color: AppColors.iconColor,
-            size: iconScale,
-          ),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => SettingsScreen()),
-          ),
-        ),
+        // IconButton(
+        //   icon: Icon(
+        //     Icons.settings,
+        //     color: AppColors.iconColor,
+        //     size: iconScale,
+        //   ),
+        //   onPressed: () => Navigator.push(
+        //     context,
+        //     MaterialPageRoute(builder: (context) => SettingsScreen()),
+        //   ),
+        // ),
       ],
       [
         IconButton(

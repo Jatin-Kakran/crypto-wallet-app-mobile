@@ -202,11 +202,12 @@ class HomepageState extends State<Homepage> {
                               );
                             },
                           ),
-                          _buildActionButton(
-                            Icons.list,
-                            "Values",
-                            _readAllWalletsInConsole,
-                          ),
+                          if (kDebugMode) // ✅ only adds this button in debug mode
+                            _buildActionButton(
+                              Icons.list,
+                              "Values",
+                              _readAllWalletsInConsole,
+                            ),
                         ],
                       ),
                     ],

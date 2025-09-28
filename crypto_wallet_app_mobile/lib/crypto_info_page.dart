@@ -316,10 +316,10 @@ class _CryptoInfoPageState extends State<CryptoInfoPage>
           onPressed: () => Navigator.pop(context),
         ),
         actions: const [
-          Icon(Icons.candlestick_chart_outlined, color: Colors.white),
-          SizedBox(width: 16),
-          Icon(Icons.more_vert, color: Colors.white),
-          SizedBox(width: 8),
+          // Icon(Icons.candlestick_chart_outlined, color: Colors.white),
+          // SizedBox(width: 16),
+          // Icon(Icons.more_vert, color: Colors.white),
+          // SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
@@ -491,8 +491,8 @@ class _CryptoInfoPageState extends State<CryptoInfoPage>
       ),
       tabs: const [
         Tab(child: FittedBox(child: Text("Transactions"))),
-        Tab(child: FittedBox(child: Text("Services"))),
-        Tab(child: FittedBox(child: Text("News"))), // Example long one
+        // Tab(child: FittedBox(child: Text("Services"))),
+        // Tab(child: FittedBox(child: Text("News"))),
       ],
     );
   }
@@ -502,11 +502,11 @@ class _CryptoInfoPageState extends State<CryptoInfoPage>
       controller: _tabController,
       children: [
         _EmptyTab(icon: Icons.insert_drive_file, title: "No transactions"),
-        _EmptyTab(
-          icon: Icons.miscellaneous_services,
-          title: "No services available",
-        ),
-        _EmptyTab(icon: Icons.article_outlined, title: "No news available"),
+        // _EmptyTab(
+        //   icon: Icons.miscellaneous_services,
+        //   title: "No services available",
+        // ),
+        // _EmptyTab(icon: Icons.article_outlined, title: "No news available"),
       ],
     );
   }
